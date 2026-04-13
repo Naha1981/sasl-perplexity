@@ -1,17 +1,24 @@
 version: '3.8'
 
 services:
-  sasl-recognition:
+  backend:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - ./models:/app/models
     environment:
-      - PYTHONPATH=/app
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - SUPABASE_URL=https://yourproject.supabase.co
+      - SUPABASE_ANON_KEY=your_anon_key
+      - AI_SERVICE_URL=http://sasl-model:8080/predict   # or your remote model URL
+    depends_on:
+      - sasl-model    # only if you self‑host the SASL model
+    env_file:
+      - .env
+
+  # Optional: standalone SASL‑model service (you can remove this and point to a cloud API)
+  sasl-model:
+    image: your-sasl-model:latest
+    ports:
+      - "8080:8080"
+    # volumes:
+    #   - ./sasl_model:/app
+    # command: ["uvicorn", "model:app", "--host", "0.0.0.0", "--port", "8080"]
