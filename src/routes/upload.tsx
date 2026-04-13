@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Upload, Loader2 } from 'lucide-react';
+import { uploadVideoToBackend } from '@/lib/api';
 
 export const Route = createFileRoute('/upload')({
   head: () => ({
@@ -35,6 +36,25 @@ function UploadPage() {
     }
   }, [user, role, authLoading, navigate]);
 
+  async function getVideoDuration(file: File) {
+    return new Promise<number>((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const video = document.createElement('video');
+
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(video.duration || 0);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Unable to determine video duration'));
+      };
+
+      video.src = objectUrl;
+    });
+  }
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !file) return;
@@ -55,26 +75,24 @@ function UploadPage() {
         .from('videos')
         .getPublicUrl(filePath);
 
-      // Create video record
-      const { data: video, error: videoError } = await supabase
-        .from('videos')
-        .insert({
-          title,
-          grade_level: gradeLevel,
-          language: 'SASL',
-          video_url: urlData.publicUrl,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      if (!urlData?.publicUrl) {
+        throw new Error('Unable to get public video URL');
+      }
 
-      if (videoError) throw videoError;
+      const durationSec = await getVideoDuration(file);
 
-      // Create lesson
+      const videoData = await uploadVideoToBackend({
+        title,
+        grade_level: gradeLevel,
+        storage_url: urlData.publicUrl,
+        duration_sec: durationSec,
+        is_published: false,
+      });
+
       const { data: lesson, error: lessonError } = await supabase
         .from('lessons')
         .insert({
-          video_id: video.id,
+          video_id: videoData.id,
           title,
           created_by: user.id,
         })
