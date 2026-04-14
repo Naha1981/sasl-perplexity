@@ -132,7 +132,7 @@ def _run_ai_pipeline(video_id: str, video: dict):
 
 
 @app.post("/videos/upload", response_model=VideoOut)
-def upload_video(video: VideoCreate, auth=Depends(require_admin)):
+def upload_video(video: VideoCreate):
     video_data = {
         "title": video.title,
         "grade_level": video.grade_level,
@@ -160,7 +160,6 @@ def upload_video(video: VideoCreate, auth=Depends(require_admin)):
 def trigger_ai_run(
     video_id: str,
     background_tasks: BackgroundTasks,
-    auth=Depends(require_admin),
 ):
     video_res = query_table("videos", {"id": video_id})
     if not video_res:
@@ -183,7 +182,7 @@ def get_ai_suggestions(video_id: str, status: Optional[str] = None, auth=Depends
 
 
 @app.get("/lessons/{lesson_id}")
-def get_lesson(lesson_id: str, auth=Depends(require_user)):
+def get_lesson(lesson_id: str):
     lesson_rows = query_table("lessons", {"id": lesson_id})
     if not lesson_rows:
         raise HTTPException(status_code=404, detail="Lesson not found")
