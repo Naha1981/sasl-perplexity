@@ -19,19 +19,34 @@ export async function uploadVideoToBackend(
   storage_url: string;
   duration_sec: number;
 }> {
-  const response = await fetch(`${BASE_API_URL}/videos/upload`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(dto),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  if (!response.ok) {
-    const text = await response.text();
-    console.error('Upload failed:', text);
-    throw new Error('Failed to upload video metadata');
+  try {
+    console.log('[Upload] POST', `${BASE_API_URL}/videos/upload`, dto);
+    const response = await fetch(`${BASE_API_URL}/videos/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[Upload] Backend error:', response.status, text);
+      throw new Error(`Backend error (${response.status}): ${text}`);
+    }
+
+    const data = await response.json();
+    console.log('[Upload] Success:', data);
+    return data;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Backend request timed out after 30 seconds. The server may be starting up — please try again.');
+    }
+    throw err;
   }
-
-  return response.json();
 }

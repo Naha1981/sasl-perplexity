@@ -22,6 +22,8 @@ export const Route = createFileRoute('/upload')({
   component: UploadPage,
 });
 
+const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+
 function UploadPage() {
   const { user, role, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -36,40 +38,69 @@ function UploadPage() {
     }
   }, [user, role, authLoading, navigate]);
 
-  async function getVideoDuration(file: File) {
-    return new Promise<number>((resolve, reject) => {
+  function getVideoDuration(file: File): Promise<number> {
+    return new Promise<number>((resolve) => {
       const objectUrl = URL.createObjectURL(file);
       const video = document.createElement('video');
-
       video.preload = 'metadata';
+
+      const cleanup = () => URL.revokeObjectURL(objectUrl);
+
       video.onloadedmetadata = () => {
-        URL.revokeObjectURL(objectUrl);
+        cleanup();
         resolve(video.duration || 0);
       };
       video.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error('Unable to determine video duration'));
+        cleanup();
+        console.warn('[Upload] Could not read video duration, defaulting to 0');
+        resolve(0); // Don't block upload if duration can't be read
       };
 
       video.src = objectUrl;
+
+      // Safety timeout — resolve with 0 after 10s
+      setTimeout(() => {
+        cleanup();
+        resolve(0);
+      }, 10000);
     });
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] ?? null;
+    if (selected && selected.type === 'video/webm') {
+      toast.error('WebM files are not supported. Please upload an MP4 video.');
+      e.target.value = '';
+      setFile(null);
+      return;
+    }
+    setFile(selected);
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !file) return;
 
+    if (file.type === 'video/webm') {
+      toast.error('WebM files are not supported. Please upload an MP4 video.');
+      return;
+    }
+
     setUploading(true);
     try {
-      // Upload video to storage
+      // 1. Upload video to storage
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
+      console.log('[Upload] Uploading to storage:', filePath);
       const { error: uploadError } = await supabase.storage
         .from('videos')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[Upload] Storage error:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
 
       const { data: urlData } = supabase.storage
         .from('videos')
@@ -79,8 +110,13 @@ function UploadPage() {
         throw new Error('Unable to get public video URL');
       }
 
-      const durationSec = await getVideoDuration(file);
+      console.log('[Upload] Storage URL:', urlData.publicUrl);
 
+      // 2. Get video duration
+      const durationSec = await getVideoDuration(file);
+      console.log('[Upload] Duration:', durationSec);
+
+      // 3. Register with backend
       const videoData = await uploadVideoToBackend({
         title,
         grade_level: gradeLevel,
@@ -89,6 +125,7 @@ function UploadPage() {
         is_published: false,
       });
 
+      // 4. Create lesson in database
       const { data: lesson, error: lessonError } = await supabase
         .from('lessons')
         .insert({
@@ -99,11 +136,15 @@ function UploadPage() {
         .select()
         .single();
 
-      if (lessonError) throw lessonError;
+      if (lessonError) {
+        console.error('[Upload] Lesson insert error:', lessonError);
+        throw new Error(`Failed to create lesson: ${lessonError.message}`);
+      }
 
       toast.success('Video uploaded! Redirecting to lesson editor...');
       navigate({ to: '/editor/$lessonId', params: { lessonId: lesson.id } });
     } catch (err) {
+      console.error('[Upload] Error:', err);
       toast.error(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
@@ -168,11 +209,12 @@ function UploadPage() {
                 <Input
                   id="video"
                   type="file"
-                  accept="video/mp4,video/*"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  accept="video/mp4,video/quicktime,video/x-msvideo"
+                  onChange={handleFileChange}
                   required
                   className="h-12 text-lg file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-base file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
                 />
+                <p className="text-sm text-muted-foreground">WebM is not supported — please use MP4.</p>
               </div>
 
               <Button type="submit" size="lg" className="w-full h-14 text-lg font-semibold" disabled={uploading || !file}>
