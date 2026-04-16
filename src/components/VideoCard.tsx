@@ -10,6 +10,7 @@ interface VideoCardProps {
   gradeLevel: string;
   status: string;
   thumbnailUrl?: string | null;
+  videoUrl?: string | null;
   lessonId?: string | null;
   isAdmin?: boolean;
   onPublish?: (id: string) => void;
