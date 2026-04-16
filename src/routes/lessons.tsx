@@ -25,6 +25,7 @@ interface LessonItem {
   title: string;
   gradeLevel: string;
   thumbnailUrl: string | null;
+  videoUrl: string | null;
   completed: boolean;
 }
 
