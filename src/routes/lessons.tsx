@@ -54,13 +54,14 @@ function LessonsPage() {
       if (data) {
         const items: LessonItem[] = [];
         for (const d of data) {
-          const video = d.videos as unknown as { grade_level: string; thumbnail_url: string | null; status: string } | null;
+          const video = d.videos as unknown as { grade_level: string; thumbnail_url: string | null; video_url: string | null; status: string } | null;
           if (role === 'admin' || video?.status === 'published') {
             items.push({
               id: d.id,
               title: d.title,
               gradeLevel: video?.grade_level ?? 'Unknown',
               thumbnailUrl: video?.thumbnail_url ?? null,
+              videoUrl: video?.video_url ?? null,
               completed: completedSet.has(d.id),
             });
           }
