@@ -10,6 +10,7 @@ interface VideoCardProps {
   gradeLevel: string;
   status: string;
   thumbnailUrl?: string | null;
+  videoUrl?: string | null;
   lessonId?: string | null;
   isAdmin?: boolean;
   onPublish?: (id: string) => void;
@@ -17,12 +18,14 @@ interface VideoCardProps {
   onDelete?: (id: string) => void;
 }
 
-export function VideoCard({ id, title, gradeLevel, status, thumbnailUrl, lessonId, isAdmin, onPublish, onUnpublish, onDelete }: VideoCardProps) {
+export function VideoCard({ id, title, gradeLevel, status, thumbnailUrl, videoUrl, lessonId, isAdmin, onPublish, onUnpublish, onDelete }: VideoCardProps) {
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg hover:ring-2 hover:ring-primary/20">
       <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
+        ) : videoUrl ? (
+          <video src={videoUrl} className="h-full w-full object-cover" muted preload="metadata" />
         ) : (
           <Video className="h-12 w-12 text-muted-foreground/40" />
         )}

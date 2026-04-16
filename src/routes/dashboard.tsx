@@ -163,6 +163,7 @@ function DashboardPage() {
                 gradeLevel={v.grade_level}
                 status={v.status}
                 thumbnailUrl={v.thumbnail_url}
+                videoUrl={v.video_url}
                 lessonId={v.lessonId}
                 isAdmin
                 onPublish={handlePublish}

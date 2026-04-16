@@ -25,6 +25,7 @@ interface LessonItem {
   title: string;
   gradeLevel: string;
   thumbnailUrl: string | null;
+  videoUrl: string | null;
   completed: boolean;
 }
 
@@ -40,7 +41,7 @@ function LessonsPage() {
 
       const { data } = await supabase
         .from('lessons')
-        .select('id, title, videos(grade_level, thumbnail_url, status)')
+        .select('id, title, videos(grade_level, thumbnail_url, video_url, status)')
         .order('created_at', { ascending: false });
 
       const { data: progressData } = await supabase
@@ -54,13 +55,14 @@ function LessonsPage() {
       if (data) {
         const items: LessonItem[] = [];
         for (const d of data) {
-          const video = d.videos as unknown as { grade_level: string; thumbnail_url: string | null; status: string } | null;
+          const video = d.videos as unknown as { grade_level: string; thumbnail_url: string | null; video_url: string | null; status: string } | null;
           if (role === 'admin' || video?.status === 'published') {
             items.push({
               id: d.id,
               title: d.title,
               gradeLevel: video?.grade_level ?? 'Unknown',
               thumbnailUrl: video?.thumbnail_url ?? null,
+              videoUrl: video?.video_url ?? null,
               completed: completedSet.has(d.id),
             });
           }
@@ -144,9 +146,11 @@ function LessonsPage() {
                     Done
                   </div>
                 )}
-                <div className="relative aspect-video bg-muted flex items-center justify-center">
+                <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
                   {lesson.thumbnailUrl ? (
                     <img src={lesson.thumbnailUrl} alt={lesson.title} className="h-full w-full object-cover" loading="lazy" />
+                  ) : lesson.videoUrl ? (
+                    <video src={lesson.videoUrl} className="h-full w-full object-cover" muted preload="metadata" />
                   ) : (
                     <Video className="h-12 w-12 text-muted-foreground/40" />
                   )}
