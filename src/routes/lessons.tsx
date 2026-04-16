@@ -40,7 +40,7 @@ function LessonsPage() {
 
       const { data } = await supabase
         .from('lessons')
-        .select('id, title, videos(grade_level, thumbnail_url, status)')
+        .select('id, title, videos(grade_level, thumbnail_url, video_url, status)')
         .order('created_at', { ascending: false });
 
       const { data: progressData } = await supabase
