@@ -10,12 +10,11 @@ function resolveTimingWindow(start: number, end: number, nextStart?: number, fal
     return explicitEnd;
   }
 
-  const candidates = [nextStart, fallbackEnd].filter(
-    (value): value is number => Number.isFinite(value) && value > safeStart + 0.01
-  );
+  const candidates = [nextStart, fallbackEnd].filter((value): value is number => value !== undefined && Number.isFinite(value));
+  const validCandidates = candidates.filter((value) => value > safeStart + 0.01);
 
-  if (candidates.length > 0) {
-    return Math.max(safeStart + MIN_ACTIVE_WINDOW_SEC, Math.min(...candidates));
+  if (validCandidates.length > 0) {
+    return Math.max(safeStart + MIN_ACTIVE_WINDOW_SEC, Math.min(...validCandidates));
   }
 
   return safeStart + MIN_ACTIVE_WINDOW_SEC;
